@@ -2,6 +2,7 @@
 # -*- coding: UTF-8 -*-
 import re
 import requests
+import asyncio
 from bs4 import BeautifulSoup
 
 
@@ -37,7 +38,7 @@ def get_movie_info(session, url):
     except Exception as e:
         print('request exception', e)
 
-    soup = BeautifulSoup(resp.content, 'lxml')
+    soup = BeautifulSoup(resp.content, 'html.parser')
     return soup
 
 
@@ -58,11 +59,22 @@ def parser_soup(soup):
     return info_list
 
 
+async def schedule_tasks(session, url):
+    soup = get_movie_info(session, url)
+    return parser_soup(soup)
+
+
 if __name__ == '__main__':
     movie = []
+    tasks = []
     for i in range(10):
         url = base_url + '?start={}&filter='.format(i * 25)
-        soup = get_movie_info(session, url)
-        movie.extend(parser_soup(soup))
+        # soup = get_movie_info(session, url)
+        # movie.extend(parser_soup(soup))
+        tasks.append(schedule_tasks(session, url))
+    loop = asyncio.get_event_loop()
+    done, _ = loop.run_until_complete(asyncio.wait(tasks))
+    for task in done:
+        movie.extend(task.result())
     my_print(movie)
     save_as_text(movie)
